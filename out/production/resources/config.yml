@@ -1,2 +1,94 @@
-block-place: true
+enable-console: false
+
+
+
+#blocks
+enable-break-console: false
+
+
 block-break: true
+block-break-console: false
+
+block-burn: true
+block-burn-console: false
+
+block-can-build: true
+block-can-build-console: false
+
+block-damage: true
+block-damage-console: false
+
+block-dispense: true
+block-dispense-console: false
+
+block-fade: true
+block-fade-console: false
+
+block-form: true
+block-form-console: false
+
+block-from-to: true
+block-from-to-console: false
+
+block-grow: true
+block-grow-console: false
+
+block-piston-extend: true
+block-piston-extend-console: false
+
+block-piston-retract: true
+block-piston-retract-console: false
+
+block-place: true
+block-place-console: false
+
+block-redstone: true
+block-redstone-console: false
+
+block-spread: true
+block-spread-console: false
+
+block-leaves-decay: true
+block-leaves-decay-console: false
+
+block-note-play: true
+block-note-play-console: false
+
+block-sign-change: true
+block-sign-change-console: false
+
+
+
+#enchantment
+enable-enchantment-console: false
+
+
+enchant-enchantment: true
+enchant-enchantment-console: false
+
+enchant-prepare-enchantment: true
+enchant-prepare-enchantment-console: false
+
+
+
+#Entities
+enable-entity-console: false
+
+
+entity-spawn: true
+entity-spawn-console: false
+
+entity-creeper-power: true
+entity-creeper-power-console: false
+
+entity-break-door: true
+entity-break-door-console: false
+
+entity-block-change: true
+entity-block-change-console: false
+
+entity-combust: true
+entity-combust-console: false
+
+entity-create-portal: true
+entity-create-portal-console: false
