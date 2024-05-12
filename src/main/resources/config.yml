@@ -1,94 +1,412 @@
+#AdvLog Configuration File
+#Author: TSERATO
+#Support: https://discord.gg/Un6zfbpZN3
+#Logs 150+ Events
+
+
+#Enables message in the consoles for each event.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
 enable-console: false
 
 
 
-#blocks
+#Blocks - Events concerning blocks.
+
+#Enables message in the consoles for each event concerning blocks.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
 enable-break-console: false
 
 
+#Logs block breaking.
 block-break: true
 block-break-console: false
 
+#Logs block burning.
 block-burn: true
 block-burn-console: false
 
+#Logs if a player is allowed to build there.
 block-can-build: true
 block-can-build-console: false
 
+#Logs the damaging of blocks.
 block-damage: true
 block-damage-console: false
 
+#Logs dispensing of blocks.
 block-dispense: true
 block-dispense-console: false
 
+#Logs fading of blocks, e.g. melting.
 block-fade: true
 block-fade-console: false
 
+#Logs the forming of blocks.
 block-form: true
 block-form-console: false
 
+#Logs movement of blocks from point A to point B.
 block-from-to: true
 block-from-to-console: false
 
+#Logs the growth.
 block-grow: true
 block-grow-console: false
 
+#Logs the extention of pistons.
 block-piston-extend: true
 block-piston-extend-console: false
 
+#Logs the retraction of pistons.
 block-piston-retract: true
 block-piston-retract-console: false
 
+#Logs the placement of blocks.
 block-place: true
 block-place-console: false
 
+#Logs change of redstone.
 block-redstone: true
 block-redstone-console: false
 
+#Logs the spread of blocks.
 block-spread: true
 block-spread-console: false
 
+#Logs the decaying of leaves.
 block-leaves-decay: true
 block-leaves-decay-console: false
 
+#Logs the play of a note.
 block-note-play: true
 block-note-play-console: false
 
+#Logs the change of signs.
 block-sign-change: true
 block-sign-change-console: false
 
 
 
-#enchantment
+#Enables message in the consoles for each event concerning enchantments.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
 enable-enchantment-console: false
 
 
+#Logs the enchantment.
 enchant-enchantment: true
 enchant-enchantment-console: false
 
+#Logs the preparation of enchantments.
 enchant-prepare-enchantment: true
 enchant-prepare-enchantment-console: false
 
 
 
-#Entities
+#Enables message in the consoles for each event concerning entities.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
 enable-entity-console: false
 
 
+#Logs the spawning of entities.
 entity-spawn: true
 entity-spawn-console: false
 
+#Logs whenever a creeper gets hit by a lightning.
 entity-creeper-power: true
 entity-creeper-power-console: false
 
+#Logs the breaking of a door.
 entity-break-door: true
 entity-break-door-console: false
 
+#Logs the changing of a block by an entity.
 entity-block-change: true
 entity-block-change-console: false
 
+#Logs the combustion by/from entities.
 entity-combust: true
 entity-combust-console: false
 
+#Logs the creation of portals.
 entity-create-portal: true
 entity-create-portal-console: false
+
+#Logs the entity damage done by blocks.
+entity-damage-by-block: true
+entity-damage-by-block-console: false
+
+#Logs the entity damage dealt by other entities.
+entity-damage-by-entity: true
+entity-damage-by-entity-console: false
+
+#Logs the death of entities.
+entity-death: true
+entity-death-console: false
+
+#Logs the explosion of entities.
+entity-explode: true
+entity-explode-console: false
+
+#Logs the interaction of entities.
+entity-interact: true
+entity-interact-console: false
+
+#Logs the entering of portals by entities.
+entity-portal-enter: true
+entity-portal-enter-console: false
+
+#Logs the exiting of portals by entities.
+entity-portal-exit: true
+entity-portal-exit-console: false
+
+#Logs the regain of health.
+entity-regain-health: true
+entity-regain-health-console: false
+
+#Logs the shooting of a bow.
+entity-shoot-bow: true
+entity-shoot-bow-console: false
+
+#Logs the taming of entities.
+entity-tame: true
+entity-tame-console: false
+
+#Logs the targeting of entities.
+entity-target: true
+entity-target-console: false
+
+#Logs the teleportation of entities, e.g. Enderman.
+entity-teleport: true
+entity-teleport-console: false
+
+#Logs the usage of exp bottles.
+entity-exp-bottle: true
+entity-exp-bottle-console: false
+
+#Logs the prime of an explosion.
+entity-explosion-prime: true
+entity-explosion-prime-console: false
+
+#Logs the food level change.
+entity-food-level-change: true
+entity-food-level-change-console: false
+
+#Logs the item depspawn.
+entity-item-despawn: true
+entity-item-despawn-console: false
+
+#Logs the hitting of Lightning to pigs.
+entity-pig-zap: true
+entity-pig-zap-console: false
+
+#Logs the player deaths.
+entity-player-death: true
+entity-player-death-console: false
+
+#Logs potion splashs.
+entity-potion-splash: true
+entity-potion-splash-console: false
+
+#Logs the dyeing of wool.
+entity-sheep-dye-wool: true
+entity-sheep-dye-wool-console: false
+
+#Logs the regrowth of wool.
+entity-sheep-regrow-wool: true
+entity-sheep-regrow-wool-console: false
+
+#Logs the splitting of slimes.
+entity-slime-split: true
+entity-slime-split-console: false
+
+
+
+#Enables message in the consoles for each event concerning the inventory.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
+enable-inventory-console: false
+
+
+#Logs the brewing of items.
+inventory-brew: true
+inventory-brew-console: false
+
+#Logs the crafting of items.
+inventory-craft-item: true
+inventory-craft-item-console: false
+
+#Logs the furnace burn.
+inventory-furnace-burn: true
+inventory-furnace-burn-console: false
+
+#Logs the smelting done by furnaces.
+inventory-furnace-smelt: true
+inventory-furnace-smelt-console: false
+
+
+
+#Enables message in the consoles for each event concerning the player.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
+enable-player-console: false
+
+
+#Logs the animation.
+player-animation: true
+player-animation-console: false
+
+#Logs the entering of a bed.
+player-bed-enter: true
+player-bed-enter-console: false
+
+#Logs the exiting of a bed.
+player-bed-leave: true
+player-bed-leave-console: false
+
+#Logs the emptying of a bucket.
+player-bucket-empty: true
+player-bucket-empty-console: false
+
+#Logs the filling of a bucket.
+player-bucket-fill: true
+player-bucket-fill-console: true
+
+#Logs the chatting.
+player-chat: true
+player-chat-console: false
+
+#Logs dropping of items.
+player-drop-item: true
+player-drop-item-console: false
+
+#Logs throwing of eggs.
+player-egg-throw: true
+player-egg-throw-console: false
+
+#Logs the change of experience points.
+player-exp-change: true
+player-exp-change-console: true
+
+#Logs the fishing done by a player.
+player-fish: true
+player-fish-console: true
+
+#Logs the changing of gamemodes.
+player-gamemode-change: true
+player-gamemode-change-console: false
+
+#Logs the interaction with entities.
+player-interact-entity: true
+player-interact-entity-console: false
+
+#Logs the item break done by a player.
+player-item-break: true
+player-item-break-console: false
+
+#Logs the change of an item held by player.
+player-item-held: true
+player-item-held-console: false
+
+#Logs the joins of a player.
+player-join: true
+player-join-console: false
+
+#Logs the kicks of a player.
+player-kick: true
+player-kick-console: false
+
+#Logs the change of experience levels.
+player-level-change: true
+player-level-change-console: false
+
+#Logs the player login.
+player-login: true
+player-login-console: false
+
+#Logs the player movement.
+player-move: true
+player-move-console: false
+
+#Logs the item pick-up.
+player-item-pick: true
+player-item-pick-console: false
+
+#Logs the pre-login.
+player-pre-login: true
+player-pre-login-console: false
+
+#Logs the quits of a player.
+player-quit: true
+player-quit-console: false
+
+#Logs the respawn of a player.
+player-respawn: true
+player-respawn-console: false
+
+#Logs the shearing by a player.
+player-shear-entity: true
+player-shear-entity-console: false
+
+#Logs the teleportation of a player.
+player-teleport: true
+player-teleport-console: false
+
+#Logs the change into the flying state.
+player-toggle-flight: true
+player-toggle-flight-console: false
+
+#Logs the change into the sneaking state.
+player-toggle-sneak: true
+player-toggle-sneak-console: false
+
+#Logs the change into the sprinting state.
+player-toggle-sprint: true
+player-toggle-sprint-console: false
+
+
+
+#Enables message in the consoles for each event concerning vehicles.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
+enable-vehicle-console: false
+
+
+#Logs the block collision of a vehicle with a block.
+vehicle-block-collision: true
+vehicle-block-collision-console: false
+
+#Logs the creation of a vehicle.
+vehicle-create: true
+vehicle-create-console: false
+
+#Logs the damage done to a vehicle.
+vehicle-damage: true
+vehicle-damage-console: false
+
+#Logs the destruction of a vehicle.
+vehicle-destroy: true
+vehicle-destroy-console: false
+
+#Logs the entering of a vehicle.
+vehicle-enter: true
+vehicle-enter-console: false
+
+#Logs the exiting of a vehicle.
+vehicle-exit: true
+vehicle-exit-console: false
+
+#Logs the movement of a vehicle.
+vehicle-move: true
+vehicle-move-console: false
+
+
+
+#Enables message in the consoles for each event concerning the weather.
+#NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
+enable-weather-console: false
+
+
+#Logs the change of the lightning state.
+weather-lightning: true
+weather-lightning-console: false
+
+#Logs the change of the thunder state.
+weather-thunder: true
+weather-thunder-console: false
