@@ -1,8 +1,10 @@
-name: AdvancedLogging
+name: AdvLog
 version: '1.0'
+author: TSERATO
 main: dev.tserato.advancedlogging.AdvancedLogging
-description: Logs 100+ Events
+description: Logs 150+ Events
 api-version: '1.20'
 commands:
-  advancedlogging:
-    aliases: al
+  advlog:
+    permission: advlog.use
+    aliases: [al, advlog]

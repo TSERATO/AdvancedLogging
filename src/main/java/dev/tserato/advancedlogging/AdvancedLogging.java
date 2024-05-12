@@ -1,8 +1,8 @@
 package dev.tserato.advancedlogging;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -14,6 +14,7 @@ import io.papermc.paper.event.player.PlayerPickItemEvent;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
@@ -38,7 +39,10 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
         getLogger().info("AdvancedLogging Enabled");
         getServer().getPluginManager().registerEvents(this, this);
         saveDefaultConfig();
+        checkForUpdates();
         createDirectoriesIfNeeded();
+        int pluginId = 21836;
+        Metrics metrics = new Metrics(this, pluginId);
     }
 
     @Override
@@ -46,12 +50,82 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
         getLogger().info("AdvancedLogging Disabled");
     }
 
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        checkForUpdates(player);
+    }
+
+    private void checkForUpdates() {
+        try {
+            int resourceId = 116766;
+            String updateCheckUrl = "https://api.spigotmc.org/legacy/update.php?resource=" + resourceId;
+            URL url = new URL(updateCheckUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            int responseCode = connection.getResponseCode();
+            if (responseCode == 200) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String version = in.readLine();
+                in.close();
+                String currentVersion = getDescription().getVersion();
+                if (compareVersions(currentVersion, version) < 0) {
+                    getLogger().warning("A new version of AdvLog (v" + version + ") is available! You are currently running v" + currentVersion + ". Update at: https://www.spigotmc.org/resources/" + resourceId);
+                } else {
+                    getLogger().info("You are running the latest version of AdvLog.");
+                }
+            }
+            connection.disconnect();
+        } catch (IOException e) {
+            getLogger().warning("Failed to check for updates: " + e.getMessage());
+        }
+    }
+
+    private void checkForUpdates(Player player) {
+        try {
+            int resourceId = 116766;
+            String updateCheckUrl = "https://api.spigotmc.org/legacy/update.php?resource=" + resourceId;
+            URL url = new URL(updateCheckUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            int responseCode = connection.getResponseCode();
+            if (responseCode == 200) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String version = in.readLine();
+                in.close();
+                String currentVersion = getDescription().getVersion();
+                if (compareVersions(currentVersion, version) < 0) {
+                    if (player.hasPermission("advlog.use")) {
+                        player.sendMessage("A new version of AdvLog (v" + version + ") is available! You are currently running v" + currentVersion + ". Update at: https://www.spigotmc.org/resources/" + resourceId);
+                    }
+                }
+            }
+            connection.disconnect();
+        } catch (IOException e) {
+            getLogger().warning("Failed to check for updates: " + e.getMessage());
+        }
+    }
+
+    private int compareVersions(String version1, String version2) {
+        String[] parts1 = version1.split("\\.");
+        String[] parts2 = version2.split("\\.");
+
+        int length = Math.max(parts1.length, parts2.length);
+        for (int i = 0; i < length; i++) {
+            int part1 = i < parts1.length ? Integer.parseInt(parts1[i]) : 0;
+            int part2 = i < parts2.length ? Integer.parseInt(parts2[i]) : 0;
+            if (part1 < part2) return -1;
+            if (part1 > part2) return 1;
+        }
+        return 0;
+    }
+
     private void createDirectoriesIfNeeded() {
         File logsDirectory = new File(getDataFolder(), "Logs");
         if (!logsDirectory.exists()) {
             logsDirectory.mkdirs();
         }
-        // Create subdirectories for different types of events
+
         String[] eventDirectories = {"Block Events", "Enchantment Events", "Entity Events", "Inventory Events", "Player Events", "Vehicle Events", "Weather Events"};
         for (String eventDir : eventDirectories) {
             File eventDirectory = new File(logsDirectory, eventDir);
@@ -2078,7 +2152,7 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, String label, String[] args) {
-        if (label.equalsIgnoreCase("advancedlogging") || label.equalsIgnoreCase("al")) {
+        if (label.equalsIgnoreCase("advancedlogging") || label.equalsIgnoreCase("al") || label.equalsIgnoreCase("advlog")) {
             if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
                 reloadConfig();
                 sender.sendMessage("Config reloaded.");
