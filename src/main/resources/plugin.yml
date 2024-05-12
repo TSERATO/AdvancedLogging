@@ -1,0 +1,5 @@
+name: AdvancedLogging
+version: '1.0'
+main: dev.tserato.advancedlogging.AdvancedLogging
+description: Logs 100+ Events
+api-version: '1.20'

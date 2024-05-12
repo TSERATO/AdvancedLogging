@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="AdvancedLogging:jar">
+    <output-path>$PROJECT_DIR$/../../paperservertest/plugins</output-path>
+    <root id="archive" name="AdvancedLogging.jar">
+      <element id="module-output" name="AdvancedLogging.main" />
+      <element id="dir-copy" path="$PROJECT_DIR$/src/main/resources" />
+    </root>
+  </artifact>
+</component>
