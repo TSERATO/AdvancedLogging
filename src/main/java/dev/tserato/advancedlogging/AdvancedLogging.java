@@ -4,13 +4,12 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Objects;
+import java.util.*;
 
 import io.papermc.paper.event.entity.EntityPortalReadyEvent;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import io.papermc.paper.event.player.PlayerPickItemEvent;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -31,6 +30,8 @@ import org.bukkit.event.weather.LightningStrikeEvent;
 import org.bukkit.event.weather.ThunderChangeEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+
+import static org.codehaus.plexus.util.FileUtils.deleteDirectory;
 
 public class AdvancedLogging extends JavaPlugin implements Listener {
 
@@ -2150,15 +2151,52 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
 
 
 
+    private final Set<String> confirmingClear = new HashSet<>();
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, String label, String[] args) {
         if (label.equalsIgnoreCase("advancedlogging") || label.equalsIgnoreCase("al") || label.equalsIgnoreCase("advlog")) {
-            if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
-                reloadConfig();
-                sender.sendMessage("Config reloaded.");
-                return true;
+            if (args.length == 1) {
+                if (args[0].equalsIgnoreCase("reload")) {
+                    reloadConfig();
+                    sender.sendMessage("Config reloaded.");
+                    return true;
+                } else if (args[0].equalsIgnoreCase("clear")) {
+                    if (!confirmingClear.contains(sender.getName())) {
+                        confirmingClear.add(sender.getName());
+                        sender.sendMessage(ChatColor.RED + "Are you sure you want to clear all log files? If yes, run the command again.");
+                        return true;
+                    } else {
+                        confirmingClear.remove(sender.getName());
+                        try {
+                            clearLogs(sender);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        return true;
+                    }
+                } else {
+                    sender.sendMessage("You don't have permission to clear logs.");
+                    return true;
+                    }
+                }
             }
-        }
         return false;
     }
+
+    private void clearLogs(CommandSender sender) throws IOException {
+        File logsDirectory = new File(getDataFolder(), "Logs");
+        if (logsDirectory.exists() && logsDirectory.isDirectory()) {
+            File[] eventDirectories = logsDirectory.listFiles();
+            if (eventDirectories != null) {
+                for (File eventDir : eventDirectories) {
+                    deleteDirectory(eventDir);
+                }
+            }
+            createDirectoriesIfNeeded();
+            sender.sendMessage(ChatColor.GREEN + "All log files deleted successfully.");
+        } else {
+            sender.sendMessage(ChatColor.RED + "No log files found.");
+        }
+    }
+
 }
