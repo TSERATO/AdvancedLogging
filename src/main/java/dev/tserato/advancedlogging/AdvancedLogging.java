@@ -29,26 +29,136 @@ import org.bukkit.event.vehicle.*;
 import org.bukkit.event.weather.LightningStrikeEvent;
 import org.bukkit.event.weather.ThunderChangeEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import static org.codehaus.plexus.util.FileUtils.deleteDirectory;
 
 public class AdvancedLogging extends JavaPlugin implements Listener {
+
+    private int months;
+    private int days;
+    private int hours;
+    private int minutes;
+    private int seconds;
+    private @NotNull BukkitTask clearLogsTask;
 
     @Override
     public void onEnable() {
         getLogger().info("AdvancedLogging Enabled");
         getServer().getPluginManager().registerEvents(this, this);
         saveDefaultConfig();
+        loadConfigValues();
         checkForUpdates();
         createDirectoriesIfNeeded();
-        int pluginId = 21836;
+        int pluginId = 21901;
         Metrics metrics = new Metrics(this, pluginId);
+
+        if (shouldDeleteLogs()) {
+            getLogger().warning("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+            getLogger().warning("Deleting logs every:");
+            getLogger().warning(months + " Months");
+            getLogger().warning(days + " Days");
+            getLogger().warning(hours + " Hours");
+            getLogger().warning(minutes + " Minutes");
+            getLogger().warning(seconds + " Seconds");
+            getLogger().warning("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+            startClearLogsTask();
+        } else {
+            getLogger().info("Log deletion is disabled in the configuration.");
+        }
+    }
+
+    private void startClearLogsTask() {
+        long period = seconds * 20 + minutes * 20 * 60 + hours * 20 * 60 * 60 + days * 20 * 60 * 60 * 24 + months * 20 * 60 * 60 * 24 * 30;
+        if (clearLogsTask != null) {
+            clearLogsTask.cancel();
+        }
+        clearLogsTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                try {
+                    autoClearLogs();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }.runTaskTimer(this, period, period);
+    }
+
+    private void loadConfigValues() {
+        FileConfiguration config = getConfig();
+        months = config.getInt("delete-logs.months", 0);
+        days = config.getInt("delete-logs.days", 0);
+        hours = config.getInt("delete-logs.hours", 0);
+        minutes = config.getInt("delete-logs.minutes", 0);
+        seconds = config.getInt("delete-logs.seconds", 0);
+    }
+
+    private boolean shouldDeleteLogs() {
+        return months > 0 || days > 0 || hours > 0 || minutes > 0 || seconds > 0;
     }
 
     @Override
     public void onDisable() {
         getLogger().info("AdvancedLogging Disabled");
+        if (clearLogsTask != null) {
+            clearLogsTask.cancel();
+        }
+    }
+
+    private final Set<String> confirmingClear = new HashSet<>();
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, String label, String[] args) {
+        if (label.equalsIgnoreCase("advancedlogging") || label.equalsIgnoreCase("al") || label.equalsIgnoreCase("advlog")) {
+            if (args.length == 1) {
+                if (args[0].equalsIgnoreCase("reload")) {
+                    if (sender.hasPermission("advlog.use")) {
+                        reloadConfig();
+                        loadConfigValues();
+                        sender.sendMessage("Config reloaded.");
+                        if (shouldDeleteLogs()) {
+                            startClearLogsTask();
+                        } else {
+                            if (clearLogsTask != null) {
+                                clearLogsTask.cancel();
+                            }
+                        }
+                        return true;
+                    } else {
+                        if (sender instanceof Player) {
+                            sender.sendMessage(ChatColor.RED + "You don't have permission!");
+                        } else {
+                            sender.sendMessage("You don't have permission!");
+                        }
+                    }
+                } else if (args[0].equalsIgnoreCase("clear")) {
+                    if (sender.hasPermission("advlog.use")) {
+                        if (!confirmingClear.contains(sender.getName())) {
+                            confirmingClear.add(sender.getName());
+                            sender.sendMessage(ChatColor.RED + "Are you sure you want to clear all log files? If yes, run the command again.");
+                            return true;
+                        } else {
+                            confirmingClear.remove(sender.getName());
+                            try {
+                                clearLogs(sender);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            return true;
+                        }
+                    } else {
+                        if (sender instanceof Player) {
+                            sender.sendMessage(ChatColor.RED + "You don't have permission!");
+                        } else {
+                            sender.sendMessage("You don't have permission!");
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     @EventHandler
@@ -150,6 +260,48 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             writer.close();
         } catch (IOException e) {
             getLogger().severe("An error occurred while logging: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+        if (cmd.getName().equalsIgnoreCase("advlog") && args.length == 1 || cmd.getName().equalsIgnoreCase("advancedlogging") && args.length == 1 || cmd.getName().equalsIgnoreCase("al") && args.length == 1) {
+            completions.add("reload");
+            completions.add("clear");
+        }
+        return completions;
+    }
+
+    private void clearLogs(CommandSender sender) throws IOException {
+        File logsDirectory = new File(getDataFolder(), "Logs");
+        if (logsDirectory.exists() && logsDirectory.isDirectory()) {
+            File[] eventDirectories = logsDirectory.listFiles();
+            if (eventDirectories != null) {
+                for (File eventDir : eventDirectories) {
+                    deleteDirectory(eventDir);
+                }
+            }
+            createDirectoriesIfNeeded();
+            sender.sendMessage(ChatColor.GREEN + "All log files deleted successfully.");
+        } else {
+            sender.sendMessage(ChatColor.RED + "No log files found.");
+        }
+    }
+
+    private void autoClearLogs() throws IOException {
+        File logsDirectory = new File(getDataFolder(), "Logs");
+        if (logsDirectory.exists() && logsDirectory.isDirectory()) {
+            File[] eventDirectories = logsDirectory.listFiles();
+            if (eventDirectories != null) {
+                for (File eventDir : eventDirectories) {
+                    deleteDirectory(eventDir);
+                }
+            }
+            createDirectoriesIfNeeded();
+            getLogger().info("All log files deleted successfully.");
+        } else {
+            getLogger().severe("No log files found.");
         }
     }
 
@@ -1217,7 +1369,7 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String location = event.getEntity().getLocation().toString();
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("SLIMESPLIT: Name: %s; Count: %s; Location: %s; World: %s.", name, count, location, world);
-            logToFile("Entity Events", "entity_.log", logMessage);
+            logToFile("Entity Events", "entity_slime_split.log", logMessage);
             if (config.getBoolean("enable-console") && config.getBoolean("entity-slime-split-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-slime-split-console")) {
@@ -2141,62 +2293,4 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             }
         }
     }
-
-
-
-
-
-
-
-
-
-
-    private final Set<String> confirmingClear = new HashSet<>();
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, String label, String[] args) {
-        if (label.equalsIgnoreCase("advancedlogging") || label.equalsIgnoreCase("al") || label.equalsIgnoreCase("advlog")) {
-            if (args.length == 1) {
-                if (args[0].equalsIgnoreCase("reload")) {
-                    reloadConfig();
-                    sender.sendMessage("Config reloaded.");
-                    return true;
-                } else if (args[0].equalsIgnoreCase("clear")) {
-                    if (!confirmingClear.contains(sender.getName())) {
-                        confirmingClear.add(sender.getName());
-                        sender.sendMessage(ChatColor.RED + "Are you sure you want to clear all log files? If yes, run the command again.");
-                        return true;
-                    } else {
-                        confirmingClear.remove(sender.getName());
-                        try {
-                            clearLogs(sender);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                        return true;
-                    }
-                } else {
-                    sender.sendMessage("You don't have permission to clear logs.");
-                    return true;
-                    }
-                }
-            }
-        return false;
-    }
-
-    private void clearLogs(CommandSender sender) throws IOException {
-        File logsDirectory = new File(getDataFolder(), "Logs");
-        if (logsDirectory.exists() && logsDirectory.isDirectory()) {
-            File[] eventDirectories = logsDirectory.listFiles();
-            if (eventDirectories != null) {
-                for (File eventDir : eventDirectories) {
-                    deleteDirectory(eventDir);
-                }
-            }
-            createDirectoriesIfNeeded();
-            sender.sendMessage(ChatColor.GREEN + "All log files deleted successfully.");
-        } else {
-            sender.sendMessage(ChatColor.RED + "No log files found.");
-        }
-    }
-
 }

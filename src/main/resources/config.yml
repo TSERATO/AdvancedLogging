@@ -4,10 +4,18 @@
 #Logs 150+ Events
 
 
+#Select in what interval the logs should get deleted. Default is every day. Set to 0 to disable.
+delete-logs:
+  months: 0
+  days: 1
+  hours: 0
+  minutes: 0
+  seconds: 0
+
+
 #Enables message in the consoles for each event.
 #NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
 enable-console: false
-
 
 
 #Blocks - Events concerning blocks.
@@ -283,11 +291,11 @@ player-egg-throw-console: false
 
 #Logs the change of experience points.
 player-exp-change: true
-player-exp-change-console: true
+player-exp-change-console: false
 
 #Logs the fishing done by a player.
 player-fish: true
-player-fish-console: true
+player-fish-console: false
 
 #Logs the changing of gamemodes.
 player-gamemode-change: true
