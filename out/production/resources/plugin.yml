@@ -1,5 +1,5 @@
 name: AdvLog
-version: '1.0'
+version: '1.3'
 author: TSERATO
 main: dev.tserato.advancedlogging.AdvancedLogging
 description: Logs 150+ Events

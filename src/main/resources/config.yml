@@ -12,6 +12,12 @@ delete-logs:
   minutes: 0
   seconds: 0
 
+#DISCORD
+#Enable Discord Webhook
+#YOU HAVE TO RESTART YOUR SERVER AFTER CHANGING THIS SETTING
+use-discord: false
+#Webhook URL
+discord-webhook-url: "YOUR_DISCORD_WEBHOOK_URL_HERE"
 
 #Enables message in the consoles for each event.
 #NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE

@@ -1,10 +1,12 @@
 package dev.tserato.advancedlogging;
 
+import java.awt.*;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 
 import io.papermc.paper.event.entity.EntityPortalReadyEvent;
 import io.papermc.paper.event.player.AsyncChatEvent;
@@ -43,6 +45,8 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
     private int minutes;
     private int seconds;
     private @NotNull BukkitTask clearLogsTask;
+    private static boolean useDiscord;
+    private static String discordWebhookUrl;
 
     @Override
     public void onEnable() {
@@ -52,6 +56,7 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
         loadConfigValues();
         checkForUpdates();
         createDirectoriesIfNeeded();
+        loadDiscordConfigValues();
         int pluginId = 21901;
         Metrics metrics = new Metrics(this, pluginId);
 
@@ -155,10 +160,37 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
                             sender.sendMessage("You don't have permission!");
                         }
                     }
+                } else if (args[0].equalsIgnoreCase("version") || args[0].equalsIgnoreCase("v")) {
+                    // New version commands
+                    sender.sendMessage(ChatColor.GREEN + "Current Version: " + getDescription().getVersion());
+                    checkAndSendLatestVersion(sender);
+                    return true;
                 }
             }
         }
         return false;
+    }
+
+    private void checkAndSendLatestVersion(CommandSender sender) {
+        try {
+            int resourceId = 116766;
+            String updateCheckUrl = "https://api.spigotmc.org/legacy/update.php?resource=" + resourceId;
+            URL url = new URL(updateCheckUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            int responseCode = connection.getResponseCode();
+            if (responseCode == 200) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String latestVersion = in.readLine();
+                in.close();
+                sender.sendMessage(ChatColor.GREEN + "Latest Version: " + latestVersion);
+            } else {
+                sender.sendMessage(ChatColor.RED + "Failed to check for latest version.");
+            }
+            connection.disconnect();
+        } catch (IOException e) {
+            sender.sendMessage(ChatColor.RED + "Failed to check for latest version: " + e.getMessage());
+        }
     }
 
     @EventHandler
@@ -269,8 +301,29 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
         if (cmd.getName().equalsIgnoreCase("advlog") && args.length == 1 || cmd.getName().equalsIgnoreCase("advancedlogging") && args.length == 1 || cmd.getName().equalsIgnoreCase("al") && args.length == 1) {
             completions.add("reload");
             completions.add("clear");
+            completions.add("version");
+            completions.add("v");
         }
         return completions;
+    }
+
+    public void loadDiscordConfigValues() {
+        FileConfiguration config = getConfig();
+        useDiscord = config.getBoolean("use-discord", false);
+        discordWebhookUrl = config.getString("discord-webhook-url", "");
+    }
+
+    public static void logToDiscord(String message) {
+
+        try {
+            if (useDiscord && !discordWebhookUrl.isEmpty()) {
+                DiscordWebhook webhook = new DiscordWebhook(discordWebhookUrl);
+                webhook.addEmbed(new DiscordWebhook.EmbedObject().setTitle("New Event logged!").setDescription(message).setColor(Color.YELLOW));
+                webhook.execute();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void clearLogs(CommandSender sender) throws IOException {
@@ -324,7 +377,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKBREAK: Broken by: %s; Type: %s; Location: %s; World: %s.", playerName, blockType, location, world);
             logToFile("Block Events", "block_break.log", logMessage);
-
+            
+            logToDiscord(logMessage);
+            
             if (config.getBoolean("enable-console") && config.getBoolean("block-break-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-break-console")) {
@@ -347,6 +402,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKBURN: Burned by: %s; Type: %s; Location: %s; World: %s.", Name, blockType, location, world);
             logToFile("Block Events", "block_burn.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-burn-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-burn-console")) {
@@ -370,6 +428,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKCANBUILD: Trying to get build by: %s; Type: %s; Buildable? %s; Location: %s; World: %s.", Name, blockType, buildable, location, world);
             logToFile("Block Events", "block_can_build.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-can-build-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-can-build-console")) {
@@ -392,6 +453,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKDAMAGE: Damaged by: %s; Type: %s; Location: %s; World: %s.", Name, blockType, location, world);
             logToFile("Block Events", "block_damage.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-damage-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-damage-console")) {
@@ -414,6 +478,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKDISPENSE: Velocity: %s; Type: %s; Location: %s; World: %s.", Velocity, blockType, location, world);
             logToFile("Block Events", "block_dispense.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-dispense-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-dispense-console")) {
@@ -436,6 +503,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKFADE: New State: %s; Type: %s; Location: %s; World: %s.", state, blockType, location, world);
             logToFile("Block Events", "block_fade.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-fade-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-fade-console")) {
@@ -458,6 +528,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKFORM: New State: %s; Type: %s; Location: %s; World: %s.", state, blockType, location, world);
             logToFile("Block Events", "block_form.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-form-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-form-console")) {
@@ -480,6 +553,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKFROMTO: To Block: %s; Type: %s; Location: %s; World: %s.", blockto, blockType, location, world);
             logToFile("Block Events", "block_from_to.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-from-to-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-from-to-console")) {
@@ -502,6 +578,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKGROW: New State: %s; Type: %s; Location: %s; World: %s.", state, blockType, location, world);
             logToFile("Block Events", "block_grow.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-grow-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-grow-console")) {
@@ -524,6 +603,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKIGNITE: Ignited by: %s; Type: %s; Location: %s; World: %s.", playerName, blockType, location, world);
             logToFile("Block Events", "block_ignite.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-ignite-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-ignite-console")) {
@@ -547,6 +629,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKPISTONEXTEND: Sticky? %s; Type: %s; Facing: %s Location: %s; World: %s.", sticky, blockType, facing, location, world);
             logToFile("Block Events", "block_piston-extend.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-piston-extend-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-piston-extend-console")) {
@@ -570,6 +655,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKPISTONRETRACT: Sticky? %s; Type: %s; Facing: %s Location: %s; World: %s.", sticky, blockType, facing, location, world);
             logToFile("Block Events", "block_piston_retract.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-piston-retract-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-piston-retract-console")) {
@@ -592,6 +680,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKPLACE: Placed by: %s; Type: %s; Location: %s; World: %s.", playerName, blockType, location, world);
             logToFile("Block Events", "block_place.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-place-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-place-console")) {
@@ -615,6 +706,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKREDSTONE: Old current: %s; New current: %s; Type: %s; Location: %s; World: %s.", oldCurrent, newCurrent, blockType, location, world);
             logToFile("Block Events", "block_redstone.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-redstone-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-redstone-console")) {
@@ -637,6 +731,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKSPREAD: New state: %s; Type: %s; Location: %s; World: %s.", state, blockType, location, world);
             logToFile("Block Events", "block_spread.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-spread-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-spread-console")) {
@@ -658,6 +755,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKLEAVESDECAY: Type: %s; Location: %s; World: %s.", blockType, location, world);
             logToFile("Block Events", "block_leaves_decay.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-leaves-decay-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-leaves-decay-console")) {
@@ -681,6 +781,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKNOTEPLAY: Instrument: %s; Note: %s; Type: %s; Location: %s; World: %s.", instrument, note, blockType, location, world);
             logToFile("Block Events", "block_note_play.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-note-play-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-note-play-console")) {
@@ -703,6 +806,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getWorld().getName();
             String logMessage = String.format("BLOCKSIGNCHANGE: Changed by: %s; Type: %s; Location: %s; World: %s.", playerName, blockType, location, world);
             logToFile("Block Events", "block_sign_change.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("block-sign-change-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("block-sign-change-console")) {
@@ -729,6 +835,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEnchanter().getWorld().getName();
             String logMessage = String.format("ENCHANTMENT: Enchanted by: %s; Type: %s; Location: %s; World: %s.", playerName, blockType, location, world);
             logToFile("Enchantment Events", "enchant_enchantment.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("enchant-enchantment-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("enchant-enchantment-console")) {
@@ -751,6 +860,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEnchanter().getWorld().getName();
             String logMessage = String.format("PREPAREENCHANTMENT: Prepared by: %s; Type: %s; Location: %s; World: %s.", playerName, blockType, location, world);
             logToFile("Enchantment Events", "enchant_prepare_enchantment.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("enchant-prepare-enchantment-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("enchant-prepare-enchantment-console")) {
@@ -777,6 +889,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getLocation().getWorld().getName();
             String logMessage = String.format("SPAWN: Spawned: %s; Reason: %s; Location: %s; World: %s.", playerName, reason, location, world);
             logToFile("Entity Events", "entity_spawn.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-spawn-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-spawn-console")) {
@@ -798,6 +913,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("CREEPERPOWER: Cause: %s; Location: %s; World: %s.", reason, location, world);
             logToFile("Entity Events", "entity_creeper_power.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("creeper-power-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("creeper-power-console")) {
@@ -819,6 +937,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("BREAKDOOR: Entity: %s; Location: %s; World: %s.", playerName, location, world);
             logToFile("Entity Events", "entity_break_door.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-break-door-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-break-door-console")) {
@@ -841,6 +962,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getLocation().getWorld().getName();
             String logMessage = String.format("CHANGEBLOCK: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_change_block.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-change-block-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-change-block-console")) {
@@ -864,6 +988,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("COMBUST: Name: %s; Type: %s; Duration: %s; Location: %s; World: %s.", name, type, duration, location, world);
             logToFile("Entity Events", "entity_combust.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-combust-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-combust-console")) {
@@ -886,6 +1013,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("CREATEPORTAL: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_create_portal.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-create-portal-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-create-portal-console")) {
@@ -908,6 +1038,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("DAMAGEBYBLOCK: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_damage_by_block.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-damage-by-block-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-damage-by-block-console")) {
@@ -930,6 +1063,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("DAMAGEBYENTITY: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_damage_by_entity.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-damage-by-entity-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-damage-by-entity-console")) {
@@ -952,6 +1088,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("DEATH: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_death.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-death-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-death-console")) {
@@ -974,6 +1113,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("EXPLODE: Name: %s; Yield: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_explode.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-explode-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-explode-console")) {
@@ -996,6 +1138,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("INTERACT: Name: %s; Interacted with: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_interact.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-interact-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-interact-console")) {
@@ -1018,6 +1163,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("PORTALENTER: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_portal_enter.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-enter-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-portal-enter-console")) {
@@ -1040,6 +1188,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("PORTALEXIT: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_portal_exit.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-portal-exit-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-protal-console")) {
@@ -1062,6 +1213,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("REGAINHEALTH: Name: %s; Reason: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_regain_health.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-regain-health-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-regain-health-console")) {
@@ -1084,6 +1238,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("SHOOTBOW: Name: %s; Projectile: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_shoot_bow.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-shoot-bow-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-shoot-bow-console")) {
@@ -1106,6 +1263,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("TAME: Name: %s; Owner: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_tame.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-tame-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-tame-console")) {
@@ -1127,6 +1287,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("TARGET: Name: %s; Location: %s; World: %s.", name, location, world);
             logToFile("Entity Events", "entity_target.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-target-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-target-console")) {
@@ -1150,6 +1313,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("TELEPORT: Name: %s; From: %s; To %s; Location: %s; World: %s.", name, from, to, location, world);
             logToFile("Entity Events", "entity_teleport.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-teleport-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-teleport-console")) {
@@ -1172,6 +1338,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("EXPBOTTLE: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_exp_bottle.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-exp-bottle-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-exp-bottle-console")) {
@@ -1194,6 +1363,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("EXPLOSIONPRIME: Name: %s; Radius: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_explosion_prime.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-explosion-prime-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-explosion-prime-console")) {
@@ -1216,6 +1388,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("FOODLEVELCHANGE: Name: %s; Level: %s; Location: %s; World: %s.", name, level, location, world);
             logToFile("Entity Events", "entity_food_level_change.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-food-level-change-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-food-level-change-console")) {
@@ -1238,6 +1413,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("ITEMDESPAWN: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_item_despawn.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-item-despawn-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-item-despawn-console")) {
@@ -1260,6 +1438,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("PIGZAP: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_pig_zap.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-pig-zap-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-pig-zap-console")) {
@@ -1282,6 +1463,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("PLAYERDEATH: Name: %s; ClientBrandName: %s; Location: %s; World: %s.", name, clientBrandName, location, world);
             logToFile("Entity Events", "entity_player_death.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-player-death-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-player-death-console")) {
@@ -1304,6 +1488,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("POTIONSPLASH: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_potion_splash.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-potion-splash-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-potion-splash-console")) {
@@ -1326,6 +1513,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("SHEEPDYEWOOL: Name: %s; Color: %s; Location: %s; World: %s.", name, color, location, world);
             logToFile("Entity Events", "entity_sheep_dye_wool.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-sheep-dye-wool-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-sheep-dye-wool-console")) {
@@ -1348,6 +1538,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("SHEEPREGROWWOOL: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Entity Events", "entity_sheep_regrow_wool.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-sheep-regrow-wool-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-sheep-regrow-wool-console")) {
@@ -1370,6 +1563,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getEntity().getLocation().getWorld().getName();
             String logMessage = String.format("SLIMESPLIT: Name: %s; Count: %s; Location: %s; World: %s.", name, count, location, world);
             logToFile("Entity Events", "entity_slime_split.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("entity-slime-split-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("entity-slime-split-console")) {
@@ -1396,6 +1592,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getContents().getLocation().getWorld().getName();
             String logMessage = String.format("BREW: Contents: %s; Fuellevel: %s; Location: %s; World: %s.", contents, fuellevel, location, world);
             logToFile("Inventory Events", "inventory_brew.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("inventory-brew-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("inventory-brew-console")) {
@@ -1418,6 +1617,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getWhoClicked().getLocation().getWorld().getName();
             String logMessage = String.format("CRAFTITEM: Name: %s; Result: %s; Location: %s; World: %s.", name, result, location, world);
             logToFile("Inventory Events", "inventory_craft_item.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("inventory-craft-item-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("inventory-craft-item-console")) {
@@ -1440,6 +1642,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getLocation().getWorld().getName();
             String logMessage = String.format("FURNACEBURN: Burntime: %s; Fuel: %s; Location: %s; World: %s.", burnTime, fuel, location, world);
             logToFile("Inventory Events", "inventory_furnace_burn.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("inventory-furnace-burn-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("inventory-furnace-burn-console")) {
@@ -1462,6 +1667,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getLocation().getWorld().getName();
             String logMessage = String.format("FURNACEBURN: Block: %s; Result: %s; Location: %s; World: %s.", block, result, location, world);
             logToFile("Inventory Events", "inventory_furnace_smelt.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("inventory-furnace-smelt-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("inventory-furnace-smelt-console")) {
@@ -1488,6 +1696,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("ANIMATION: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_animation.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-animation-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-animation-console")) {
@@ -1510,6 +1721,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("BEDENTER: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_bed_enter.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-bed-enter-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-bed-enter-console")) {
@@ -1532,6 +1746,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("BEDLEAVE: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_bed_leave.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-bed-leave-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-bed-leave-console")) {
@@ -1554,6 +1771,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("BUCKETEMPTY: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_bucket_empty.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-bucket-empty-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-bucket-empty-console")) {
@@ -1576,6 +1796,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("BUCKETFILL: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_bucket_fill.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-bucket-fill-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-bucket-fill-console")) {
@@ -1598,6 +1821,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("CHAT: Name: %s; Message: %s; Location: %s; World: %s.", name, message, location, world);
             logToFile("Player Events", "player_chat.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-chat-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-chat-console")) {
@@ -1620,6 +1846,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("ITEMDROP: Item Drop: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_drop_item.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-drop-item-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-drop-item-console")) {
@@ -1642,6 +1871,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("EGGTHROW: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_egg_throw.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-egg-throw-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-egg-throw-console")) {
@@ -1664,6 +1896,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("EXPCHANGE: Name: %s; Amount: %s; Location: %s; World: %s.", name, amount, location, world);
             logToFile("Player Events", "player_exp_change.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-exp-change-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-exp-change-console")) {
@@ -1686,6 +1921,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("FISH: Name: %s; Caught: %s; Location: %s; World: %s.", name, caught, location, world);
             logToFile("Player Events", "player_fish.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-fish-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-fish-console")) {
@@ -1708,6 +1946,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("GAMEMODECHANGE: Name: %s; New Gamemode: %s; Location: %s; World: %s.", name, newgamemode, location, world);
             logToFile("Player Events", "player_gamemode_change.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-gamemode-change-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-gamemode-change-console")) {
@@ -1730,6 +1971,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("INTERACTENTITY: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_interact_entity.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-interact-entity-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-interact-entity-console")) {
@@ -1752,6 +1996,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("BROKENITEM: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_item_break.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-item-break-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-item-break-console")) {
@@ -1775,6 +2022,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("ITEMHELD: Name: %s; Old Slot: %s; New Slot: %s; Location: %s; World: %s.", name, oldslot, newslot, location, world);
             logToFile("Player Events", "player_item_held.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-item-held-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-item-held-console")) {
@@ -1796,6 +2046,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("JOIN: Name: %s; Location: %s; World: %s.", name, location, world);
             logToFile("Player Events", "player_join.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-join-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-join-console")) {
@@ -1818,6 +2071,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("KICK: Name: %s; Cause: %s; Location: %s; World: %s.", name, cause, location, world);
             logToFile("Player Events", "player_kick.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-kick-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-kick-console")) {
@@ -1841,6 +2097,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("LEVELCHANGE: Name: %s; Old Level: %s; New Level: %s; Location: %s; World: %s.", name, oldLevel, newLevel, location, world);
             logToFile("Player Events", "player_level_change.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-level-change-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-level-change-console")) {
@@ -1863,6 +2122,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("LOGIN: Name: %s; Type: %s; Address: %s; World: %s.", name, address, location, world);
             logToFile("Player Events", "player_login.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-login-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-login-console")) {
@@ -1884,6 +2146,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("MOVE: Name: %s; Location: %s; World: %s.", name, location, world);
             logToFile("Player Events", "player_move.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-move-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-move-console")) {
@@ -1906,6 +2171,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("PICKITEM: Name: %s; Slot: %s; Location: %s; World: %s.", name, slot, location, world);
             logToFile("Player Events", "player_pick_item.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-pick-item-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-pick-item-console")) {
@@ -1926,6 +2194,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String UUID = event.getUniqueId().toString();
             String logMessage = String.format("PRELOGIN: Name: %s; UUID: %s.", name, UUID);
             logToFile("Player Events", "player_pre_login.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-pre-login-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-pre-login-console")) {
@@ -1948,6 +2219,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("QUIT: Name: %s; Reason: %s; Location: %s; World: %s.", name, reason, location, world);
             logToFile("Player Events", "player_quit.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-quit-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-quit-console")) {
@@ -1970,6 +2244,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("RESPAWN: Name: %s; Reason: %s; Location: %s; World: %s.", name, reason, location, world);
             logToFile("Player Events", "player_respawn.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-respawn-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-respawn-console")) {
@@ -1992,6 +2269,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("SHEARENTITY: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Player Events", "player_.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-shear-entity-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-shear-entity-console")) {
@@ -2015,6 +2295,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("TELEPORT: Name: %s; From: %s; To: %s; Location: %s; World: %s.", name, from, to, location, world);
             logToFile("Player Events", "player_teleport.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-teleport-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-teleport-console")) {
@@ -2036,6 +2319,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("TOGGLEFLIGHT: Name: %s; Location: %s; World: %s.", name, location, world);
             logToFile("Player Events", "player_toggle_flight.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-toggle-flight-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-toggle-flight-console")) {
@@ -2057,6 +2343,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("TOGGLESNEAK: Name: %s; Location: %s; World: %s.", name, location, world);
             logToFile("Player Events", "player_toggle_sneak.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-toggle-sneak-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-toggle-sneak-console")) {
@@ -2078,6 +2367,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getPlayer().getLocation().getWorld().getName();
             String logMessage = String.format("TOGGLESPRINT: Name: %s; Location: %s; World: %s.", name, location, world);
             logToFile("Player Events", "player_toggle_sprint.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("player-toggle-sprint-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("player-toggle-sprint-console")) {
@@ -2104,6 +2396,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getBlock().getLocation().getWorld().getName();
             String logMessage = String.format("BLOCKCOLLISION: Hit Block: %s; Velocity: %s; Location: %s; World: %s.", block, velocity, location, world);
             logToFile("Vehicle Events", "vehicle_block_collision.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("vehicle-block-collision-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("vehicle-block-collision-console")) {
@@ -2126,6 +2421,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getVehicle().getLocation().getWorld().getName();
             String logMessage = String.format("CREATE: Name: %s; Type: %s; Location: %s; World: %s.", name, type, location, world);
             logToFile("Vehicle Events", "vehicle_create.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("vehicle-create-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("vehicle-create-console")) {
@@ -2148,6 +2446,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getVehicle().getLocation().getWorld().getName();
             String logMessage = String.format("DAMAGE: Name: %s; Attacker: %s; Location: %s; World: %s.", name, attacker, location, world);
             logToFile("Vehicle Events", "vehicle_damage.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("vehicle-damage-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("vehicle-damage-console")) {
@@ -2170,6 +2471,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getVehicle().getLocation().getWorld().getName();
             String logMessage = String.format("DESTROY: Name: %s; Attacker: %s; Location: %s; World: %s.", name, attacker, location, world);
             logToFile("Vehicle Events", "vehicle_destroy.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("vehicle-destroy-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("vehicle-destroy-console")) {
@@ -2192,6 +2496,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getVehicle().getLocation().getWorld().getName();
             String logMessage = String.format("ENTER: Name: %s; Entered: %s; Location: %s; World: %s.", name, entered, location, world);
             logToFile("Vehicle Events", "vehicle_enter.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("vehicle-enter-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("vehicle-enter-console")) {
@@ -2214,6 +2521,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getVehicle().getLocation().getWorld().getName();
             String logMessage = String.format("EXIT: Name: %s; Exited: %s; Location: %s; World: %s.", name, exited, location, world);
             logToFile("Vehicle Events", "vehicle_exited.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("vehicle-exited-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("vehicle-exited-console")) {
@@ -2237,6 +2547,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getVehicle().getLocation().getWorld().getName();
             String logMessage = String.format("MOVE: Name: %s; From: %s; To: %s; Location: %s; World: %s.", name, from, to, location, world);
             logToFile("Vehicle Events", "vehicle_move.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("vehicle-move-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("vehicle-move-console")) {
@@ -2262,6 +2575,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String world = event.getLightning().getLocation().getWorld().getName();
             String logMessage = String.format("LIGHTNING: Name: %s; Cause: %s; Location: %s; World: %s.", name, cause, location, world);
             logToFile("Weather Events", "weather-lightning.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("weather-lightning-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("weather-lightning-console")) {
@@ -2282,6 +2598,9 @@ public class AdvancedLogging extends JavaPlugin implements Listener {
             String cause = event.getCause().name();
             String logMessage = String.format("THUNDERCHANGE: Active Thunder? %s; Cause: %s.", state, cause);
             logToFile("Weather Events", "weather-thunder.log", logMessage);
+            
+            logToDiscord(logMessage);
+
             if (config.getBoolean("enable-console") && config.getBoolean("weather-thunder-console")) {
                 getLogger().info(logMessage);
             } else if (config.getBoolean("enable-console") && !config.getBoolean("weather-thunder-console")) {
