@@ -14,10 +14,17 @@ delete-logs:
 
 #DISCORD
 #Enable Discord Webhook
-#YOU HAVE TO RESTART YOUR SERVER AFTER CHANGING THIS SETTING
-use-discord: false
-#Webhook URL
-discord-webhook-url: "YOUR_DISCORD_WEBHOOK_URL_HERE"
+#You can continue with even more events, by just adding a custom name in the same height of example1 and example2.
+webhook-events:
+  example1:
+    enabled: false #Select if the hook should be enabled.
+    event: BLOCK_BREAK #Choose event. Same format of the rest of the config, e.g. block-place (in config) -> BLOCK_PLACE (in webhooks)
+    webhook-url: "YOUR_WEBHOOK_URL_HERE"
+  example2:
+    enabled: false
+    event: PLAYER_JOIN
+    webhook-url: "YOUR_WEBHOOK_URL_HERE"
+
 
 #Enables message in the consoles for each event.
 #NOT RECOMMENDED, AS IT FLOODS YOUR CONSOLE
@@ -122,8 +129,8 @@ enable-entity-console: false
 
 
 #Logs the spawning of entities.
-entity-spawn: true
-entity-spawn-console: false
+entity-creature-spawn: true
+entity-creature-spawn-console: false
 
 #Logs whenever a creeper gets hit by a lightning.
 entity-creeper-power: true
